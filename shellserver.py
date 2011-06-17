@@ -16,7 +16,7 @@ class ShellServer:
         self.frsocket = os.fdopen(socket.fileno(), "r")
         #self.s.setblocking(0)
         # maybe this works for the socket filedescriptor as well XXX
-        for fd in [self.P.stdout.fileno(), socket.fileno()]:
+        for fd in [self.P.stdout.fileno()]:#, socket.fileno()]:
             fl = fcntl.fcntl(fd, fcntl.F_GETFL)
             fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
