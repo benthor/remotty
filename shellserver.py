@@ -20,11 +20,15 @@ class ShellServer:
             fl = fcntl.fcntl(fd, fcntl.F_GETFL)
             fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
+
+
     def run(self):
         P = self.P
         while not P.poll():
-            readables, writables, _nothing = select.select([P.stdout,
-                self.frsocket], [P.stdin, self.tosocket], [], TIMEOUT)
+            readables = select.select([P.stdout,self.frsocket], [], [],
+                    TIMEOUT)[0]
+            writables = select.select([], [P.stdin, self.tosocket], [],
+                    TIMEOUT)[1]
             for r in readables:
                 if r == P.stdout:
                     if self.tosocket in writables:
