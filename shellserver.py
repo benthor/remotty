@@ -12,10 +12,11 @@ TIMEOUT = 1
 class ShellServer:
     def __init__(self, socket, shell="/bin/zsh"):
         self.P = Popen([shell,"-i"], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-        self.s = socket
-        self.s.setblocking(0)
+        self.tosocket = os.fdopen(socket.fileno(), "w")
+        self.frsocket = os.fdopen(socket.fileno(), "r")
+        #self.s.setblocking(0)
         # maybe this works for the socket filedescriptor as well XXX
-        for fd in [self.P.stdout.fileno()]:
+        for fd in [self.P.stdout.fileno(), socket.fileno()]:
             fl = fcntl.fcntl(fd, fcntl.F_GETFL)
             fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
@@ -23,14 +24,15 @@ class ShellServer:
         P = self.P
         while not P.poll():
             readables, writables, _nothing = select.select([P.stdout,
-                self.s], [P.stdin, self.s], [], TIMEOUT)
+                self.frsocket], [P.stdin, self.tosocket], [], TIMEOUT)
             for r in readables:
                 if r == P.stdout:
-                    if self.s in writables:
-                        self.s.send(r.read())
+                    if self.tosocket in writables:
+                        self.tosocket.write(r.read())
+                        self.tosocket.flush()
                 else:
                     if P.stdin in writables:
-                        P.stdin.write(r.recv(BUFFSIZE))
+                        P.stdin.write(r.read())
 
         return P.returncode
 
@@ -38,7 +40,7 @@ class ShellServer:
 class ShellClient:
     def __init__(self, socket):
         self.s = socket
-        self.s.setblocking(0)
+        #self.s.setblocking(0)
         for fd in [sys.stdin.fileno()]:
             fl = fcntl.fcntl(fd, fcntl.F_GETFL)
             fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
