@@ -26,6 +26,10 @@ class ShellClient:
             if select([self.s],[],[],TIMEOUT)[0]:
                 if select([],[sys.stdout],[],TIMEOUT)[1]:
                     sys.stdout.write(self.s.recv(BUFFSIZE))
+                    sys.stdout.flush()
+            if select([],[self.s],[],TIMEOUT)[1]:
+                if select([sys.stdin],[],[],TIMEOUT)[0]:
+                    self.s.send(sys.stdin.read())
 
 
 if __name__ == "__main__":

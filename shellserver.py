@@ -18,11 +18,10 @@ class ShellServer:
         self.fromshell = os.fdopen(fd, "r")
         self.toshell = os.fdopen(fd, "w")
         self.S = socket
-        self.S.setblocking(0)
-        # FIXME: remove loop 
-        for fd in [self.fromshell]:#self.P.stdout.fileno()]:
-            fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-            fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+        #self.S.setblocking(0)
+        #for fd in [fd]:
+        fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
     def run(self):
         S = self.S
