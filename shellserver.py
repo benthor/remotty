@@ -8,63 +8,53 @@ import pty
 import os
 
 class ShellServer:
-    def __init__(self, socket, shell="/bin/zsh"):
+    def __init__(self, readable, writable, shell="/bin/zsh"):
+        """ Start an interactive shell """
         pid, _fd = os.forkpty()
         if pid == 0:
             os.execlp(shell, "-i")
         self.fromshell = os.fdopen(_fd, "r")
         self.toshell = os.fdopen(_fd, "w")
-        # python doesn't implement socket.flush(), so need to go via
-        # filedescriptors...
-        self.tosocket = os.fdopen(socket.fileno(), 'w')
-        self.fromsocket = os.fdopen(socket.fileno(), 'r')
-        for fd in [_fd, socket.fileno()]:
+        self.fromfd = os.fdopen(readable, "r")
+        self.tofd = os.fdopen(writable, "w")
+        # it is not really necessary to set "readable" to nonblocking
+        for fd in [_fd, writable]:
             fl = fcntl.fcntl(fd, fcntl.F_GETFL)
             fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
     def run(self):
-        fromshell,toshell,tosocket,fromsocket =\
-        self.fromshell,self.toshell,self.tosocket,self.fromsocket
+        fromshell,toshell,fromfd,tofd =\
+        self.fromshell,self.toshell,self.fromfd,self.tofd
         while not fromshell.closed and not toshell.closed:
             # only interested in fd's which we can currently read from
-            readables = select([fromshell, fromsocket],[],[])[0]
+            readables = select([fromshell, fromfd],[],[])[0]
             for r in readables:
                 if r == fromshell:
                     # hackish way to wait until socket becomes ready
                     # had errors when just trying to naively writing to socket
-                    # select blocks until 'tosocket' is ready for writing
-                    # returns [[],[tosocket],[]], which is unpacked by
+                    # select blocks until 'tofd' is ready for writing
+                    # returns [[],[tofd],[]], which is unpacked by
                     # subscripts
-                    w = select([],[tosocket],[])[1][0]
-                    w.write(r.read())
+                    select([],[tofd],[])[1][0].write(r.read())
                     # this IS important
-                    w.flush()
+                    tofd.flush()
                     # this is probably just superstition
                     r.flush()
-                elif r == fromsocket:
+                elif r == fromfd:
                     # analogous to above
                     select([],[toshell],[])[1][0].write(r.read())
-                    r.flush()
                     toshell.flush()
+                    r.flush()
                 else:
                     raise Exception("please slap the programmer")
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        import socket
-        s = socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
-        try:
-            s.bind('\0'+sys.argv[1])
-            s.listen(1)
-            con = s.accept()[0]
-            S = ShellServer(con)
-            S.run()
-        except:
-            # should be a bit more verbose about any errors here, but can't be
-            # bothered right now
-            raise
-        finally:
-            s.close()     
-    else:
-        sys.stderr.write("usage: python %s <socketname>\n" % sys.argv[0])
+    try:
+        S = ShellServer(sys.stdin.fileno(), sys.stdout.fileno())
+        S.run()
+
+    except:
+        # should be a bit more verbose about any errors here, but can't be
+        # bothered right now
+        raise
 
