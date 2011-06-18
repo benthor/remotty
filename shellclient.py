@@ -46,14 +46,10 @@ class ShellClient:
                 # the select statement below is assumed to always return a
                 # tuple of which the first element is going to be a list
                 # containing the writable socket. so why not write to it?
-                #print "sending..."
                 select([],[self.to_s], [])[1][0].write(self.to_socket_q.get())
                 self.to_s.flush()
-                #print "sent"
             if not self.to_stdout_q.empty():
-                #print "waiting"
                 select([],[sys.stdout], [])[1][0].write(self.to_stdout_q.get())
-                #print "waited"
                 sys.stdout.flush()
 
     def destroy(self):
