@@ -7,9 +7,6 @@ import fcntl
 import pty
 import os
 
-BUFFSIZE=512
-TIMEOUT = 1
-
 class ShellServer:
     def __init__(self, socket, shell="/bin/zsh"):
         pid, _fd = os.forkpty()
@@ -38,11 +35,12 @@ class ShellServer:
                     # select blocks until 'tosocket' is ready for writing
                     # returns [[],[tosocket],[]], which is unpacked by
                     # subscripts
-                    select([],[tosocket],[])[1][0].write(r.read())
+                    w = select([],[tosocket],[])[1][0]
+                    w.write(r.read())
+                    # this IS important
+                    w.flush()
                     # this is probably just superstition
                     r.flush()
-                    # this IS important
-                    tosocket.flush()
                 elif r == fromsocket:
                     # analogous to above
                     select([],[toshell],[])[1][0].write(r.read())
@@ -61,6 +59,10 @@ if __name__ == "__main__":
             con = s.accept()[0]
             S = ShellServer(con)
             S.run()
+        except:
+            # should be a bit more verbose about any errors here, but can't be
+            # bothered right now
+            raise
         finally:
             s.close()     
     else:

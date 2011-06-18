@@ -5,10 +5,8 @@ import sys
 import tty
 import fcntl
 import os
+import termios
 from Queue import Queue
-
-BUFFSIZE=512
-TIMEOUT = 0.1
 
 class ShellClient:
     def __init__(self, socket):
@@ -19,12 +17,15 @@ class ShellClient:
         self.to_socket_q = Queue()
         self.to_stdout_q = Queue()
 
+        self.settings = termios.tcgetattr(sys.stdin.fileno())
+
         for fd in [sys.stdin.fileno(), socket.fileno()]:
             fl = fcntl.fcntl(fd, fcntl.F_GETFL)
             fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
         tty.setraw(sys.stdin.fileno())
 
     def run(self):
+        """could be significantly simplified like in the ShellServer class"""
         while not sys.stdin.closed and not sys.stdout.closed:
             # this is probably just superstition
             self.to_s.flush()
@@ -39,6 +40,7 @@ class ShellClient:
                     self.to_stdout_q.put(self.from_s.read())
                 else:
                     print readable
+            # TODO: maybe solve this like in ShellServer class
             if not self.to_socket_q.empty():
                 # not defining, timeout, can afford to wait for socket
                 # the select statement below is assumed to always return a
@@ -54,15 +56,28 @@ class ShellClient:
                 #print "waited"
                 sys.stdout.flush()
 
-
+    def destroy(self):
+        print "cleaning up"
+        termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, self.settings)
+        sys.stdin.flush()
+        #self.to_s.close()
+        #self.from_s.close()
+        
 
 
 if __name__ == "__main__":
     import socket
     if len(sys.argv) > 1:
-        s = socket.socket(socket.AF_UNIX)
-        s.connect('\0'+sys.argv[1])
-        C = ShellClient(s)
-        C.run()
+        try:
+            s = socket.socket(socket.AF_UNIX)
+            s.connect('\0'+sys.argv[1])
+            C = ShellClient(s)
+            C.run()
+            print "done running"
+        except:
+            # TODO, better handling of stuff
+            raise
+        finally:
+            C.destroy()
     else:
         sys.stderr.write("usage: python %s <socketname>\n" % sys.argv[1])
