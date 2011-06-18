@@ -4,6 +4,7 @@ from select import select
 import sys
 #import tty
 import fcntl
+import pty
 import os
 
 BUFFSIZE=512
@@ -11,33 +12,45 @@ TIMEOUT = 1
 
 class ShellServer:
     def __init__(self, socket, shell="/bin/zsh"):
-        self.P = Popen([shell], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        pid, fd = os.forkpty()
+        if pid == 0:
+            os.execlp(shell, "-i")
+        self.fromshell = os.fdopen(fd, "r")
+        self.toshell = os.fdopen(fd, "w")
         self.S = socket
         self.S.setblocking(0)
         # FIXME: remove loop 
-        for fd in [self.P.stdout.fileno()]:
+        for fd in [self.fromshell]:#self.P.stdout.fileno()]:
             fl = fcntl.fcntl(fd, fcntl.F_GETFL)
             fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
     def run(self):
-        P = self.P
         S = self.S
-        while not P.poll():
-            writables = select([],[S, P.stdin],[],TIMEOUT)[1]
+        b = ""
+        while not self.fromshell.closed and not self.toshell.closed:
+            writables = select([],[S, self.toshell],[],TIMEOUT)[1]
+            print writables
             for w in writables:
-                if w == P.stdin:
+                if w == self.toshell:
                     r = select([S],[],[],TIMEOUT)[0]
                     if r:
+                        print "reading from socket"
                         s = S.recv(BUFFSIZE)
-                        print s
-                        w.write(s)
-                        w.flush()
+                        print "read from socket"
+                        S.send(s)
+                        if s != chr(13):
+                            b += s
+                        else:
+                            w.write(b+"\n")
+                            b = ""
+                            w.flush()
                 else:
-                    r = select([P.stdout],[],[],TIMEOUT)[0]
+                    r = select([self.fromshell],[],[],TIMEOUT)[0]
                     if r:
+                        print "reading from shell"
                         S.send(r[0].read())
+                        print "read and sent"
 
-        return P.returncode
 
 
 if __name__ == "__main__":

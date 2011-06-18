@@ -18,7 +18,6 @@ class ShellClient:
         tty.setraw(sys.stdin.fileno())
 
     def run(self):
-        #self.s.send("ls -ahl\n")
         while not sys.stdin.closed:
             if select([sys.stdin], [],[],TIMEOUT)[0]:
                 if select([],[self.s],[],TIMEOUT)[1]:
