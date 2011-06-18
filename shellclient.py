@@ -5,31 +5,56 @@ import sys
 import tty
 import fcntl
 import os
+from Queue import Queue
 
 BUFFSIZE=512
 TIMEOUT = 0.1
 
 class ShellClient:
     def __init__(self, socket):
-        self.s = socket
-        for fd in [sys.stdin.fileno()]:
+        #socket.setblocking(0)
+        self.to_s = os.fdopen(socket.fileno(), "w")
+        self.from_s = os.fdopen(socket.fileno(), "r")
+
+        self.to_socket_q = Queue()
+        self.to_stdout_q = Queue()
+
+        for fd in [sys.stdin.fileno(), socket.fileno()]:
             fl = fcntl.fcntl(fd, fcntl.F_GETFL)
             fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
         tty.setraw(sys.stdin.fileno())
 
     def run(self):
-        while not sys.stdin.closed:
-            if select([sys.stdin], [],[],TIMEOUT)[0]:
-                if select([],[self.s],[],TIMEOUT)[1]:
-                    s = sys.stdin.read()
-                    self.s.send(s)
-            if select([self.s],[],[],TIMEOUT)[0]:
-                if select([],[sys.stdout],[],TIMEOUT)[1]:
-                    sys.stdout.write(self.s.recv(BUFFSIZE))
-                    sys.stdout.flush()
-            if select([],[self.s],[],TIMEOUT)[1]:
-                if select([sys.stdin],[],[],TIMEOUT)[0]:
-                    self.s.send(sys.stdin.read())
+        while not sys.stdin.closed and not sys.stdout.closed:
+            # this is probably just superstition
+            self.to_s.flush()
+            self.from_s.flush()
+            sys.stdout.flush()
+            sys.stdin.flush()
+            readables = select([sys.stdin, self.from_s], [], [])[0]
+            for readable in readables:
+                if readable == sys.stdin:
+                    self.to_socket_q.put(sys.stdin.read())
+                elif readable == self.from_s:
+                    self.to_stdout_q.put(self.from_s.read())
+                else:
+                    print readable
+            if not self.to_socket_q.empty():
+                # not defining, timeout, can afford to wait for socket
+                # the select statement below is assumed to always return a
+                # tuple of which the first element is going to be a list
+                # containing the writable socket. so why not write to it?
+                #print "sending..."
+                select([],[self.to_s], [])[1][0].write(self.to_socket_q.get())
+                self.to_s.flush()
+                #print "sent"
+            if not self.to_stdout_q.empty():
+                #print "waiting"
+                select([],[sys.stdout], [])[1][0].write(self.to_stdout_q.get())
+                #print "waited"
+                sys.stdout.flush()
+
+
 
 
 if __name__ == "__main__":
