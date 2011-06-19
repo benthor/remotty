@@ -8,11 +8,11 @@ import pty
 import os
 
 class PTTYCommunicator:
-    def __init__(self, readable, writable, shell="/bin/zsh"):
+    def __init__(self, readable, writable, *args):
         """ Start an interactive shell """
         pid, _fd = os.forkpty()
         if pid == 0:
-            os.execlp(shell, "-i")
+            os.execlp(*args)
         self.fromshell = os.fdopen(_fd, "r")
         self.toshell = os.fdopen(_fd, "w")
         self.fromfd = os.fdopen(readable, "r")
@@ -49,7 +49,10 @@ class PTTYCommunicator:
 
 if __name__ == "__main__":
     try:
-        S = PTTYCommunicator(sys.stdin.fileno(), sys.stdout.fileno())
+        args = sys.argv[1:] or ['/bin/sh', '-i']
+        if len(args) < 2:
+            args.append("")
+        S = PTTYCommunicator(sys.stdin.fileno(), sys.stdout.fileno(), *args)
         S.run()
 
     except:
