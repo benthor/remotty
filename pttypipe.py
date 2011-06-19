@@ -7,7 +7,7 @@ import fcntl
 import pty
 import os
 
-class ShellServer:
+class PTTYCommunicator:
     def __init__(self, readable, writable, shell="/bin/zsh"):
         """ Start an interactive shell """
         pid, _fd = os.forkpty()
@@ -49,7 +49,7 @@ class ShellServer:
 
 if __name__ == "__main__":
     try:
-        S = ShellServer(sys.stdin.fileno(), sys.stdout.fileno())
+        S = PTTYCommunicator(sys.stdin.fileno(), sys.stdout.fileno())
         S.run()
 
     except:

@@ -9,7 +9,7 @@ import termios
 
 T = None
 
-class ShellClient:
+class SocketClient:
     def __init__(self, socket):
         #socket.setblocking(0)
         self.to_s = os.fdopen(socket.fileno(), "w")
@@ -51,7 +51,7 @@ if __name__ == "__main__":
         try:
             s = socket.socket(socket.AF_UNIX)
             s.connect('\0'+sys.argv[1])
-            C = ShellClient(s)
+            C = SocketClient(s)
             C.run()
             print "done running"
         except:

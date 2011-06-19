@@ -1,4 +1,3 @@
-from shellserver import ShellServer
 from select import select
 import sys
 import os
@@ -21,13 +20,11 @@ if __name__ == "__main__":
                 fl = fcntl.fcntl(fd, fcntl.F_GETFL)
                 fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
             while not tosocket.closed and not fromsocket.closed and not sys.stdin.closed and not sys.stdout.closed:
+                # this is most probably senseless. TODO: remove and check if
+                # still works
                 sys.stdin.flush()
                 fromsocket.flush()
-                stuff = select([sys.stdin, fromsocket],[],[sys.stdin,sys.stdout, fromsocket, tosocket],T)
-                if stuff[2]:
-                    raise Exception("some socket issue: %s" % str(stuff[2]))
-                    
-                for readable in stuff[0]:
+                for readable in select([sys.stdin, fromsocket],[],[],T)[0]:
                     if readable == sys.stdin:
                         select([],[tosocket],[],T)[1][0].write(readable.read())
                         tosocket.flush()
