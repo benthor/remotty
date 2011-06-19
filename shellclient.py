@@ -6,16 +6,14 @@ import tty
 import fcntl
 import os
 import termios
-from Queue import Queue
+
+T = None
 
 class ShellClient:
     def __init__(self, socket):
         #socket.setblocking(0)
         self.to_s = os.fdopen(socket.fileno(), "w")
         self.from_s = os.fdopen(socket.fileno(), "r")
-
-        self.to_socket_q = Queue()
-        self.to_stdout_q = Queue()
 
         self.settings = termios.tcgetattr(sys.stdin.fileno())
 
@@ -25,41 +23,27 @@ class ShellClient:
         tty.setraw(sys.stdin.fileno())
 
     def run(self):
-        """could be significantly simplified like in the ShellServer class"""
-        while not sys.stdin.closed and not sys.stdout.closed:
+        # FIXME these checks don't really help
+        while not sys.stdin.closed and not sys.stdout.closed and not self.to_s.closed and not self.from_s.closed:
             # this is probably just superstition
-            self.to_s.flush()
-            self.from_s.flush()
-            sys.stdout.flush()
-            sys.stdin.flush()
-            readables = select([sys.stdin, self.from_s], [], [])[0]
+            readables = select([sys.stdin, self.from_s], [], [],T)[0]
             for readable in readables:
                 if readable == sys.stdin:
-                    self.to_socket_q.put(sys.stdin.read())
+                    select([],[self.to_s], [],T)[1][0].write(sys.stdin.read())
+                    self.to_s.flush()
                 elif readable == self.from_s:
-                    self.to_stdout_q.put(self.from_s.read())
+                    select([],[sys.stdout], [],T)[1][0].write(self.from_s.read())
+                    sys.stdout.flush()
                 else:
-                    print readable
-            # TODO: maybe solve this like in ShellServer class
-            if not self.to_socket_q.empty():
-                # not defining, timeout, can afford to wait for socket
-                # the select statement below is assumed to always return a
-                # tuple of which the first element is going to be a list
-                # containing the writable socket. so why not write to it?
-                select([],[self.to_s], [])[1][0].write(self.to_socket_q.get())
-                self.to_s.flush()
-            if not self.to_stdout_q.empty():
-                select([],[sys.stdout], [])[1][0].write(self.to_stdout_q.get())
-                sys.stdout.flush()
+                    raise Exception("Programmer now accepts letterbombs")
+        print "end"
 
     def destroy(self):
         print "cleaning up"
+        # FIXME, needs proper error handling
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, self.settings)
-        sys.stdin.flush()
-        #self.to_s.close()
-        #self.from_s.close()
-        
-
+        sys.stdout.flush()
+        self.to_s.flush()
 
 if __name__ == "__main__":
     import socket
@@ -75,5 +59,6 @@ if __name__ == "__main__":
             raise
         finally:
             C.destroy()
+            s.close()
     else:
         sys.stderr.write("usage: python %s <socketname>\n" % sys.argv[1])
