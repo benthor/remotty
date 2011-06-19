@@ -17,8 +17,7 @@ class ShellServer:
         self.toshell = os.fdopen(_fd, "w")
         self.fromfd = os.fdopen(readable, "r")
         self.tofd = os.fdopen(writable, "w")
-        # it is not really necessary to set "readable" to nonblocking
-        for fd in [_fd, writable]:
+        for fd in [_fd, readable]:#, writable]:
             fl = fcntl.fcntl(fd, fcntl.F_GETFL)
             fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
@@ -30,21 +29,21 @@ class ShellServer:
             readables = select([fromshell, fromfd],[],[])[0]
             for r in readables:
                 if r == fromshell:
+                    # read now, because next statement might block for a while
+                    data = r.read()
                     # hackish way to wait until socket becomes ready
                     # had errors when just trying to naively writing to socket
                     # select blocks until 'tofd' is ready for writing
                     # returns [[],[tofd],[]], which is unpacked by
                     # subscripts
-                    select([],[tofd],[])[1][0].write(r.read())
+                    select([],[tofd],[])[1][0].write(data)
                     # this IS important
                     tofd.flush()
-                    # this is probably just superstition
-                    r.flush()
                 elif r == fromfd:
                     # analogous to above
-                    select([],[toshell],[])[1][0].write(r.read())
+                    data = r.read()
+                    select([],[toshell],[])[1][0].write(data)
                     toshell.flush()
-                    r.flush()
                 else:
                     raise Exception("please slap the programmer")
 
