@@ -1,7 +1,7 @@
 WORKDIR="/tmp"
 KEYDIR="$WORKDIR/serverkey"
 DEFAULTPORT=10000
-DEFAULTGWIF=$(route -n | sed -e 's/ * / /g' | grep -E "^[^ ]* 0\.0\.0\.0" | cut -d' ' -f 8)
+DEFAULTGWIF=$(/sbin/route -n | sed -e 's/ * / /g' | grep -E "^[^ ]* 0\.0\.0\.0" | cut -d' ' -f 8 | head -1)
 IP=$(/sbin/ifconfig $DEFAULTGWIF | grep -o 'inet addr:[^ ]* ' | sed -e 's/[^0-9]*//')
 PREFIX=$(ddate | md5sum | sed -e 's/ .*//')
 HOSTNAME=$(hostname)
@@ -13,7 +13,7 @@ then
 fi
 
 PUBKEY=$(curvecpprintkey $KEYDIR)
-CMD="curvecpserver $HOSTNAME $KEYDIR $IP $DEFAULTPORT $PREFIX curvecpmessage strace $@"
+CMD="curvecpserver $HOSTNAME $KEYDIR $IP $DEFAULTPORT $PREFIX curvecpmessage $@"
 
 echo "starting server with:"
 echo $CMD
