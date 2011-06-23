@@ -14,6 +14,7 @@ if __name__ == "__main__":
             s.bind('\0'+sys.argv[1])
             s.listen(1)
             con = s.accept()[0]
+            #s.setblocking(0)
             tosocket = os.fdopen(con.fileno(),"w")
             fromsocket = os.fdopen(con.fileno(),"r")
             for fd in [sys.stdin, con.fileno()]:

@@ -1,4 +1,5 @@
-#import terminal
+#!/usr/bin/python2
+
 from subprocess import Popen, PIPE, STDOUT
 from select import select
 import sys
