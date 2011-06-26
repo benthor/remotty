@@ -20,9 +20,10 @@ try:
         if not tmp:
             break
         stdout.write(tmp)
+        counter += EVERY
         new = time()
         elapsed = (new-start)
-        dbg(elapsed)
+        dbg(counter, elapsed)
         #start = new
         #stdin.flush()
         #stdout.flush()
