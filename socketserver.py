@@ -33,7 +33,7 @@ if __name__ == "__main__":
                         select([],[sys.stdout],[],T)[1][0].write(readable.read())
                         sys.stdout.flush()
                     else:
-                        raise Exception("Programmer now excepts letterbombs")
+                        raise Exception("Programmer now excepts leacceptss")
             print "close"
         except:
             raise
