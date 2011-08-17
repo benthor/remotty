@@ -13,7 +13,8 @@ def relative(data):
     global reference
     if not reference:
         reference = data
-    return [d-r for r,d in zip(reference,data)]
+    r, reference = reference, data
+    return [d-r for r,d in zip(r,data)]
 
 if __name__ == "__main__":
     while True:
