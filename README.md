@@ -1,4 +1,4 @@
-# remotty #
+# [Archived] remotty #
 
 This is a collection of python tools to expose a pseudo tty (ptty) to file descriptors (and therby, possibly sockets), e.g., allowing for largely transport-agnostic "remote shells". 
 
